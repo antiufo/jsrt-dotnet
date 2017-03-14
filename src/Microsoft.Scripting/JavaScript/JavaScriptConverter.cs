@@ -310,6 +310,8 @@ namespace Microsoft.Scripting.JavaScript
 
                 case JavaScriptValueType.Object:
                     var obj = val as JavaScriptObject;
+                    
+                    if (!val.IsTruthy) return null;
                     var external = obj.ExternalObject;
                     return external ?? obj;
 
