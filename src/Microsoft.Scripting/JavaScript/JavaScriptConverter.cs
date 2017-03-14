@@ -568,8 +568,14 @@ namespace Microsoft.Scripting.JavaScript
                             return eng.UndefinedValue;
                         }
 
-                        var external = @this.ExternalObject;
-                        if (external == null) external = @this.Prototype.ExternalObject;
+                        
+                        object external = null;
+                        if (!prop.GetMethod.IsStatic)
+                        {
+                            external = @this.ExternalObject;
+                            if (external == null) external = @this.Prototype.ExternalObject;
+                            if (external == null) throw new Exception("this object not found for method invocation. Perhaps it has been garbage collected.");
+                        }
                         try
                         {
                             return FromObject(prop.GetValue(external));
