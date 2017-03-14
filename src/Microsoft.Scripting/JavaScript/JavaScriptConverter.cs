@@ -488,7 +488,7 @@ namespace Microsoft.Scripting.JavaScript
                     }
                     catch (Exception ex)
                     {
-                        eng.SetException(FromObject(ex));
+                        eng.SetException(FromObject(ex), ex);
                         return eng.UndefinedValue;
                     }
                 }, owningTypeName + "." + group.Key);
@@ -565,7 +565,7 @@ namespace Microsoft.Scripting.JavaScript
                         }
                         catch (Exception ex)
                         {
-                            eng.SetException(FromObject(ex));
+                            eng.SetException(FromObject(ex), ex);
                             return eng.UndefinedValue;
                         }
                     }, owningTypeName + "." + prop.Name + ".get");
@@ -593,7 +593,7 @@ namespace Microsoft.Scripting.JavaScript
                         }
                         catch (Exception ex)
                         {
-                            eng.SetException(FromObject(ex));
+                            eng.SetException(FromObject(ex), ex);
                             return eng.UndefinedValue;
                         }
                     }, owningTypeName + "." + prop.Name + ".set");

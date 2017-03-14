@@ -87,6 +87,11 @@ namespace Microsoft.Scripting.JavaScript
             var argsArray = args.PrependWith(thisObject).Select(v => v.handle_.DangerousGetHandle()).ToArray();
             JavaScriptValueSafeHandle result;
             Errors.CheckForScriptExceptionOrThrow(api_.JsCallFunction(handle_, argsArray, unchecked((ushort)argsArray.Length), out result), eng);
+            if (GetEngine().HasException)
+            {
+                GetEngine().SetException(GetEngine().GetAndClearException());
+                return null;
+            }
             return eng.CreateValueFromHandle(result);
         }
 

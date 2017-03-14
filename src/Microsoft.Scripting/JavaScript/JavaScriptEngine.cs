@@ -44,7 +44,8 @@ namespace Microsoft.Scripting.JavaScript
 
         private JavaScriptValue undefined_, true_, false_;
         private JavaScriptObject global_, null_;
-        
+        public Exception lastException;
+
         static JavaScriptEngine()
         {
             NativeCallback = NativeCallbackThunk;
@@ -579,8 +580,7 @@ namespace Microsoft.Scripting.JavaScript
                 catch (Exception ex)
                 {
                     var error = engine.CreateError(ex.Message);
-                    engine.SetException(error);
-
+                    engine.SetException(error, ex);
                     return engine.UndefinedValue.handle_.DangerousGetHandle();
                 }
             }
@@ -632,12 +632,36 @@ namespace Microsoft.Scripting.JavaScript
             return CreateValueFromHandle(handle);
         }
 
-        public void SetException(JavaScriptValue exception)
+        public void SetException(JavaScriptValue exception, Exception clrException = null)
         {
             if (exception == null)
                 throw new ArgumentNullException(nameof(exception));
 
+            while (clrException is TargetInvocationException && clrException.InnerException != null)
+                clrException = clrException.InnerException;
+
+            if(HasException) GetAndClearException();
+            var stack = Execute(new ScriptSource(string.Empty, "new Error('StackRetrieval').stack"));
+            if (clrException == null) clrException = new Exception(exception.ToString());
+            string javaScriptStack = null;
+            if (stack.Type == JavaScriptValueType.String)
+            {
+                var val = stack.ToString();
+                const string expectedStart = "Error: StackRetrieval\n   at Global code (:1:1)\n";
+                if (val.StartsWith(expectedStart)) val = val.Substring(expectedStart.Length);
+                javaScriptStack = val;
+            }
+            if (HasException) GetAndClearException();
+
+            if (javaScriptStack != null)
+            {
+                var last = clrException;
+                var stackTraceField = typeof(Exception).GetField("_stackTraceString", BindingFlags.NonPublic | BindingFlags.Instance);
+                var stackTrace = clrException.StackTrace + "\n" + javaScriptStack;
+                stackTraceField.SetValue(clrException, stackTrace);
+            }
             Errors.ThrowIfIs(api_.JsSetException(exception.handle_));
+            this.lastException = clrException;
         }
         #endregion
 
