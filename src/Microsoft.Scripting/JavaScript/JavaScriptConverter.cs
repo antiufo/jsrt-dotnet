@@ -364,9 +364,9 @@ namespace Microsoft.Scripting.JavaScript
             var publicStaticMethods = reflector.GetMethods(instance: false);
             var publicInstanceEvents = reflector.GetEvents(instance: true);
             var publicStaticEvents = reflector.GetEvents(instance: false);
-
-            if (AnyHaveSameArity(publicConstructors, publicInstanceMethods, publicStaticMethods, publicInstanceProperties, publicStaticProperties))
-                throw new InvalidOperationException("The specified type cannot be marshaled; some publicly accessible members have the same arity.  Projected methods can't differentiate only by type (e.g., Add(int, int) and Add(float, float) would cause this error).");
+            
+            if (AnyHaveSameArity(out var duplicateName, publicConstructors, publicInstanceMethods, publicStaticMethods, publicInstanceProperties, publicStaticProperties))
+                throw new InvalidOperationException("The specified type cannot be marshaled; some publicly accessible members have the same arity.  Projected methods can't differentiate only by type (e.g., Add(int, int) and Add(float, float) would cause this error): " + t.FullName + "::" + duplicateName);
 
             JavaScriptFunction ctor;
             if (publicConstructors.Any())
@@ -591,7 +591,7 @@ namespace Microsoft.Scripting.JavaScript
             }
         }
 
-        private static bool AnyHaveSameArity(params IEnumerable<MemberInfo>[] members)
+        private static bool AnyHaveSameArity(out string duplicateName, params IEnumerable<MemberInfo>[] members)
         {
             foreach (IEnumerable<MemberInfo> memberset in members)
             {
@@ -606,7 +606,10 @@ namespace Microsoft.Scripting.JavaScript
                     {
                         int arity = ctor.GetParameters().Length;
                         if (arities.Contains(arity))
+                        {
+                            duplicateName = ".ctor";
                             return true;
+                        }
                         arities.Add(arity);
                     }
                 }
@@ -619,7 +622,10 @@ namespace Microsoft.Scripting.JavaScript
                         {
                             int arity = method.GetParameters().Length;
                             if (arities.Contains(arity))
+                            {
+                                duplicateName = methodGroup.Key;
                                 return true;
+                            }
                             arities.Add(arity);
                         }
                     }
@@ -684,7 +690,7 @@ namespace Microsoft.Scripting.JavaScript
 
                 var paramsExpr = targetMethod.GetParameters().Select(p => Expression.Parameter(p.ParameterType, p.Name)).ToArray();
                 int cookie = EventMarshaler.RegisterDelegate(callbackFunction, SynchronizationContext.Current);
-
+            duplicateName = null;
                 var marshaler = Expression.Lambda(curEvent.EventHandlerType, Expression.Block(
                     Expression.Call(
                         typeof(EventMarshaler).GetMethod(nameof(EventMarshaler.InvokeJavaScriptCallback)), 
