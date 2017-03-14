@@ -474,15 +474,17 @@ namespace Microsoft.Scripting.JavaScript
                         return eng.UndefinedValue;
                     }
 
-                    List<object> argsToPass = new List<object>();
-                    for (int i = 0; i < candidate.GetParameters().Length; i++)
+                    
+                    var parameterCount = candidate.GetParameters().Length;
+                    var argsToPass = new object[parameterCount];
+                    for (int i = 0; i < parameterCount && i < argsArray.Length; i++)
                     {
-                        argsToPass.Add(ToObject(argsArray[i]));
+                        argsToPass[i] = ToObject(argsArray[i]);
                     }
 
                     try
                     {
-                        return FromObject(candidate.Invoke(@this.ExternalObject, argsToPass.ToArray()));
+                        return FromObject(candidate.Invoke(@this.ExternalObject, argsToPass));
                     }
                     catch (Exception ex)
                     {
