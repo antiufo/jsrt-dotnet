@@ -73,23 +73,24 @@ namespace Microsoft.Scripting.JavaScript
             handlesToRelease_ = new List<IntPtr>();
             handleReleaseLock_ = new object();
 
-            ClaimContextPrivate();
-            JavaScriptValueSafeHandle global;
-            Errors.ThrowIfIs(api_.JsGetGlobalObject(out global));
-            global_ = CreateObjectFromHandle(global);
-            JavaScriptValueSafeHandle undef;
-            Errors.ThrowIfIs(api_.JsGetUndefinedValue(out undef));
-            undefined_ = CreateValueFromHandle(undef);
-            JavaScriptValueSafeHandle @null;
-            Errors.ThrowIfIs(api_.JsGetNullValue(out @null));
-            null_ = CreateObjectFromHandle(@null);
-            JavaScriptValueSafeHandle @true;
-            Errors.ThrowIfIs(api_.JsGetTrueValue(out @true));
-            true_ = CreateValueFromHandle(@true);
-            JavaScriptValueSafeHandle @false;
-            Errors.ThrowIfIs(api_.JsGetFalseValue(out @false));
-            false_ = CreateValueFromHandle(@false);
-            ReleaseContextPrivate();
+            using (AcquireContext())
+            {
+                JavaScriptValueSafeHandle global;
+                Errors.ThrowIfIs(api_.JsGetGlobalObject(out global));
+                global_ = CreateObjectFromHandle(global);
+                JavaScriptValueSafeHandle undef;
+                Errors.ThrowIfIs(api_.JsGetUndefinedValue(out undef));
+                undefined_ = CreateValueFromHandle(undef);
+                JavaScriptValueSafeHandle @null;
+                Errors.ThrowIfIs(api_.JsGetNullValue(out @null));
+                null_ = CreateObjectFromHandle(@null);
+                JavaScriptValueSafeHandle @true;
+                Errors.ThrowIfIs(api_.JsGetTrueValue(out @true));
+                true_ = CreateValueFromHandle(@true);
+                JavaScriptValueSafeHandle @false;
+                Errors.ThrowIfIs(api_.JsGetFalseValue(out @false));
+                false_ = CreateValueFromHandle(@false);
+            }
         }
 
         public JavaScriptRuntime Runtime
@@ -129,10 +130,19 @@ namespace Microsoft.Scripting.JavaScript
             }
         }
 
+
+        [ThreadStatic]
+        private static JavaScriptEngine currentEngine;
+
         public JavaScriptExecutionContext AcquireContext()
         {
-            ClaimContextPrivate();
-            return new JavaScriptExecutionContext(this, ReleaseContextPrivate);
+            var c = currentEngine;
+            if (c != this)
+            {
+                ClaimContextPrivate();
+                currentEngine = this;
+            }
+            return new JavaScriptExecutionContext(this, c);
         }
 
         private void ClaimContextPrivate()
@@ -158,9 +168,19 @@ namespace Microsoft.Scripting.JavaScript
             }
         }
 
-        private void ReleaseContextPrivate()
+        internal void ReleaseContextPrivate(JavaScriptEngine previous)
         {
-            Errors.ThrowIfIs(api_.JsReleaseCurrentContext());
+            if (currentEngine != this) throw new Exception("Incorrect JavaScriptExecutionContext disposal.");
+            if (previous != currentEngine)
+            {
+                Errors.ThrowIfIs(api_.JsReleaseCurrentContext());
+                currentEngine = previous;
+                if (previous != null)
+                {
+                    previous.ClaimContextPrivate();
+                }
+            }
+            
         }
 
         internal JavaScriptValue CreateValueFromHandle(JavaScriptValueSafeHandle handle)
