@@ -18,7 +18,12 @@ namespace Microsoft.Scripting.JavaScript
 
         public JavaScriptValue Invoke(IEnumerable<JavaScriptValue> args)
         {
-            var argsArray = args.PrependWith(this).Select(val => val.handle_.DangerousGetHandle()).ToArray();
+            return Apply(this, args);
+        }
+
+        public JavaScriptValue Apply(JavaScriptValue @this, IEnumerable<JavaScriptValue> args)
+        {
+            var argsArray = args.PrependWith(@this).Select(val => val.handle_.DangerousGetHandle()).ToArray();
             if (argsArray.Length > ushort.MaxValue)
                 throw new ArgumentOutOfRangeException(nameof(args));
 
