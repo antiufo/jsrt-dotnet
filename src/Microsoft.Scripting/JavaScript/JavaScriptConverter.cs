@@ -720,7 +720,7 @@ namespace Microsoft.Scripting.JavaScript
 
                 var paramsExpr = targetMethod.GetParameters().Select(p => Expression.Parameter(p.ParameterType, p.Name)).ToArray();
                 int cookie = EventMarshaler.RegisterDelegate(callbackFunction, SynchronizationContext.Current);
-            duplicateName = null;
+
                 var marshaler = Expression.Lambda(curEvent.EventHandlerType, Expression.Block(
                     Expression.Call(
                         typeof(EventMarshaler).GetMethod(nameof(EventMarshaler.InvokeJavaScriptCallback)), 
