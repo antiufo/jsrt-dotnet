@@ -765,7 +765,7 @@ namespace Microsoft.Scripting.JavaScript
 
             public override IEnumerable<EventInfo> GetEvents(bool instance)
             {
-                return TypeInfo_.DeclaredEvents.Where(e => (instance ? !e.AddMethod.IsStatic : e.AddMethod.IsStatic));
+                return TypeInfo_.DeclaredEvents.Where(e => e.AddMethod.IsPublic && (instance ? !e.AddMethod.IsStatic : e.AddMethod.IsStatic));
             }
 
             public override IEnumerable<FieldInfo> GetFields(bool instance)
@@ -776,12 +776,12 @@ namespace Microsoft.Scripting.JavaScript
 
             public override IEnumerable<MethodInfo> GetMethods(bool instance)
             {
-                return TypeInfo_.DeclaredMethods.Where(m => (instance ? !m.IsStatic : m.IsStatic) && !m.Attributes.HasFlag(MethodAttributes.SpecialName));
+                return TypeInfo_.DeclaredMethods.Where(m => m.IsPublic && (instance ? !m.IsStatic : m.IsStatic) && !m.Attributes.HasFlag(MethodAttributes.SpecialName));
             }
 
             public override IEnumerable<PropertyInfo> GetProperties(bool instance)
             {
-                return TypeInfo_.DeclaredProperties.Where(p => (instance ? !(p.GetMethod?.IsStatic ?? p.SetMethod.IsStatic) : (p.GetMethod?.IsStatic ?? p.SetMethod.IsStatic)));
+                return TypeInfo_.DeclaredProperties.Where(p =>(p.GetMethod != null && p.GetMethod.IsPublic) && (instance ? !(p.GetMethod?.IsStatic ?? p.SetMethod.IsStatic) : (p.GetMethod?.IsStatic ?? p.SetMethod.IsStatic)));
             }
 
             public override bool HasBaseType
