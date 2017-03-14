@@ -203,6 +203,7 @@ namespace Microsoft.Scripting.JavaScript
         public unsafe JavaScriptValue FromString(string value)
         {
             var eng = GetEngineAndClaimContext();
+            if (value == null) return eng.NullValue;
 
             JavaScriptValueSafeHandle result;
             var encoded = Encoding.Unicode.GetBytes(value);
