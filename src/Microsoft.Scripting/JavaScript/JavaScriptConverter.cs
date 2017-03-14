@@ -514,6 +514,9 @@ namespace Microsoft.Scripting.JavaScript
 
             MethodInfo most = null;
             int arity = -1;
+
+            if (methodCandidates.Count() == 1) return methodCandidates.First();
+
             foreach (var candidate in methodCandidates)
             {
                 //if (candidate.DeclaringType != external.GetType())
