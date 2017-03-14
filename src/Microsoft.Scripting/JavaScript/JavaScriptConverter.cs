@@ -331,7 +331,8 @@ namespace Microsoft.Scripting.JavaScript
                 case JavaScriptValueType.Date:
                 case JavaScriptValueType.Symbol:
                 default:
-                    throw new NotSupportedException("Unsupported type marshaling value from JavaScript to host: " + val.Type);
+                    return val;
+                    //throw new NotSupportedException("Unsupported type marshaling value from JavaScript to host: " + val.Type);
             }
         }
 
