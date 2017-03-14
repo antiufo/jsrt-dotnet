@@ -462,8 +462,16 @@ namespace Microsoft.Scripting.JavaScript
                     var @this = thisObj as JavaScriptObject;
                     if (@this == null)
                     {
-                        eng.SetException(eng.CreateTypeError("Could not call method '" + group.Key + "' because there was an invalid 'this' context."));
-                        return eng.UndefinedValue;
+                        if (thisObj.Type == JavaScriptValueType.Undefined)
+                        {
+                            var global = engine.GlobalObject.Prototype;
+                            thisObj = @this = global;
+                        }
+                        else
+                        {
+                            eng.SetException(eng.CreateTypeError("Could not call method '" + group.Key + "' because there was an invalid 'this' context."));
+                            return eng.UndefinedValue;
+                        }
                     }
 
                     var argsArray = args.ToArray();
