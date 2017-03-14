@@ -675,6 +675,7 @@ namespace Microsoft.Scripting.JavaScript
                 }
             }
 
+            duplicateName = null;
             return false;
         }
 
