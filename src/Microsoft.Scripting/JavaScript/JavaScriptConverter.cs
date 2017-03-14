@@ -265,6 +265,17 @@ namespace Microsoft.Scripting.JavaScript
             {
                 throw new ArgumentException("Use JavaScriptEngine.CreateFunction to marshal a delegate to JavaScript.");
             }
+            else if (t.IsArray)
+            {
+                var arr = (Array)o;
+                var len = arr.Length;
+                var jarr = GetEngine().CreateArray(arr.Length);
+                for (int i = 0; i < len; i++)
+                {
+                    jarr.SetAt(i, FromObject(arr.GetValue(i)));
+                }
+                return jarr;
+            }
             else
             {
                 var result = InitializeProjectionForObject(o);
