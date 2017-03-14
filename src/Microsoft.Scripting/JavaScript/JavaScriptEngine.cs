@@ -477,9 +477,10 @@ namespace Microsoft.Scripting.JavaScript
         internal object GetExternalObjectFrom(JavaScriptValue value)
         {
             Debug.Assert(value != null);
-
             IntPtr handlePtr;
-            Errors.ThrowIfIs(api_.JsGetExternalData(value.handle_, out handlePtr));
+            var r = api_.JsGetExternalData(value.handle_, out handlePtr);
+            if (r == JsErrorCode.JsErrorInvalidArgument) return null;
+            Errors.ThrowIfIs(r);
             GCHandle gcHandle = GCHandle.FromIntPtr(handlePtr);
             ExternalObjectThunkData thunk = gcHandle.Target as ExternalObjectThunkData;
             if (thunk == null)
