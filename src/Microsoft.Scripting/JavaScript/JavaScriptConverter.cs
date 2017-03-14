@@ -206,8 +206,7 @@ namespace Microsoft.Scripting.JavaScript
             if (value == null) return eng.NullValue;
 
             JavaScriptValueSafeHandle result;
-            var encoded = Encoding.Unicode.GetBytes(value);
-            fixed (byte* ptr = &encoded[0])
+            fixed (char* ptr = value)
             {
                 Errors.ThrowIfIs(api_.JsPointerToString(ptr, value.Length, out result));
             }
