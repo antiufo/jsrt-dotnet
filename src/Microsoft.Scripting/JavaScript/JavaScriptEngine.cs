@@ -27,6 +27,7 @@ namespace Microsoft.Scripting.JavaScript
         {
             public WeakReference<JavaScriptEngine> engine;
             public WeakReference<object> userData;
+            public object userDataStrong;
             public JavaScriptExternalObjectFinalizeCallback callback;
         }
 
@@ -162,7 +163,7 @@ namespace Microsoft.Scripting.JavaScript
                         var error = api_.JsRelease(handle, out count);
                         Debug.Assert(error == JsErrorCode.JsNoError);
                     }
-
+                    
                     handlesToRelease_.Clear();
                 }
             }
@@ -461,8 +462,10 @@ namespace Microsoft.Scripting.JavaScript
             var engine = thunkData.engine;
             var callback = thunkData.callback;
             object userData;
-            thunkData.userData.TryGetTarget(out userData);
-
+            userData = thunkData.userDataStrong;
+            if (userData == null)
+                thunkData.userData.TryGetTarget(out userData);
+            
             if (callback != null)
                 callback(userData);
 
@@ -482,7 +485,7 @@ namespace Microsoft.Scripting.JavaScript
                 return obj;
             }
 
-            ExternalObjectThunkData thunk = new ExternalObjectThunkData() { callback = finalizeCallback, engine = new WeakReference<JavaScriptEngine>(this), userData = new WeakReference<object>(externalData), };
+            ExternalObjectThunkData thunk = new ExternalObjectThunkData() { callback = finalizeCallback, engine = new WeakReference<JavaScriptEngine>(this), userDataStrong = externalData/*, userData = new WeakReference<object>(externalData),*/ };
             GCHandle handle = GCHandle.Alloc(thunk);
             externalObjects_.Add(thunk);
 
@@ -505,7 +508,8 @@ namespace Microsoft.Scripting.JavaScript
             ExternalObjectThunkData thunk = gcHandle.Target as ExternalObjectThunkData;
             if (thunk == null)
                 return null;
-
+            if(thunk.userDataStrong != null)
+                return thunk.userDataStrong;
             object result;
             thunk.userData.TryGetTarget(out result);
             return result;
