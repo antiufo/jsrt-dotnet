@@ -4,6 +4,8 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
@@ -451,8 +453,15 @@ namespace Microsoft.Scripting.JavaScript
             }
         }
 
+        private ConditionalWeakTable<object, JavaScriptObject> externalObjectsDict = new ConditionalWeakTable<object, JavaScriptObject>();
+
         public JavaScriptObject CreateExternalObject(object externalData, JavaScriptExternalObjectFinalizeCallback finalizeCallback)
         {
+            if (externalObjectsDict.TryGetValue(externalData, out var obj))
+            {
+                return obj;
+            }
+
             ExternalObjectThunkData thunk = new ExternalObjectThunkData() { callback = finalizeCallback, engine = new WeakReference<JavaScriptEngine>(this), userData = new WeakReference<object>(externalData), };
             GCHandle handle = GCHandle.Alloc(thunk);
             externalObjects_.Add(thunk);
@@ -460,7 +469,9 @@ namespace Microsoft.Scripting.JavaScript
             JavaScriptValueSafeHandle result;
             Errors.ThrowIfIs(api_.JsCreateExternalObject(GCHandle.ToIntPtr(handle), FinalizerCallbackPtr, out result));
 
-            return CreateObjectFromHandle(result);
+            obj = CreateObjectFromHandle(result);
+            externalObjectsDict.Add(externalData, obj);
+            return obj;
         }
 
         internal object GetExternalObjectFrom(JavaScriptValue value)
