@@ -567,9 +567,11 @@ namespace Microsoft.Scripting.JavaScript
                             return eng.UndefinedValue;
                         }
 
+                        var external = @this.ExternalObject;
+                        if (external == null) external = @this.Prototype.ExternalObject;
                         try
                         {
-                            return FromObject(prop.GetValue(@this.ExternalObject));
+                            return FromObject(prop.GetValue(external));
                         }
                         catch (Exception ex)
                         {
