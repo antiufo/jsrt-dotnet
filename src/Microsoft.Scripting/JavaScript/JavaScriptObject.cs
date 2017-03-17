@@ -449,5 +449,11 @@ namespace Microsoft.Scripting.JavaScript
         }
         #endregion
 
+
+
+        public string[] GetOwnPropertyNamesAsStrings()
+        {
+            return ((object[])GetEngine().Converter.ToObject(GetOwnPropertyNames())).Cast<string>().ToArray();
+        }
     }
 }
