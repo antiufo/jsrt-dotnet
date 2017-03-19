@@ -549,7 +549,7 @@ namespace Microsoft.Scripting.JavaScript
             }
         }
 
-        private ConditionalWeakTable<object, JavaScriptObject> externalObjectsDict = new ConditionalWeakTable<object, JavaScriptObject>();
+        private Dictionary<object, JavaScriptObject> externalObjectsDict = new Dictionary<object, JavaScriptObject>();
 
         internal List<GCHandle> strongGCHandles = new List<GCHandle>();
         internal WeakReferenceStruct<JavaScriptEngine> engineWeakReference;
