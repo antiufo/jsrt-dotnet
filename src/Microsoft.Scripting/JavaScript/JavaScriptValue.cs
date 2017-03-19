@@ -14,7 +14,7 @@ namespace Microsoft.Scripting.JavaScript
     {
         internal JavaScriptValueSafeHandle handle_;
         internal JavaScriptValueType type_;
-        internal WeakReferenceStruct<JavaScriptEngine> engine_;
+        internal WeakReference<JavaScriptEngine> engine_;
         internal ChakraApi api_;
 
         internal JavaScriptEngine GetEngine()

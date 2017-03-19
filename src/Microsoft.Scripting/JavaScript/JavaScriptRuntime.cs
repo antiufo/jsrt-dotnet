@@ -14,14 +14,14 @@ namespace Microsoft.Scripting.JavaScript
         private JavaScriptRuntimeSettings settings_;
         private JavaScriptRuntimeSafeHandle handle_;
         private ChakraApi api_ = ChakraApi.Instance;
-        private List<WeakReferenceStruct<JavaScriptEngine>> childEngines_;
+        private List<WeakReference<JavaScriptEngine>> childEngines_;
 
         public JavaScriptRuntime(JavaScriptRuntimeSettings settings = null)
         {
             if (settings == null)
                 settings = new JavaScriptRuntimeSettings();
 
-            childEngines_ = new List<WeakReferenceStruct<JavaScriptEngine>>();
+            childEngines_ = new List<WeakReference<JavaScriptEngine>>();
             settings_ = settings;
             var attrs = settings.GetRuntimeAttributes();
 

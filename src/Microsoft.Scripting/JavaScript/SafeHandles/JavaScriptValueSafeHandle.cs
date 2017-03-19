@@ -10,7 +10,7 @@ namespace Microsoft.Scripting.JavaScript.SafeHandles
 {
     internal class JavaScriptValueSafeHandle : SafeHandle
     {
-        private WeakReferenceStruct<JavaScriptEngine> engine_;
+        private WeakReference<JavaScriptEngine> engine_;
 
         public JavaScriptValueSafeHandle():
             base(IntPtr.Zero, ownsHandle: true)
@@ -41,7 +41,7 @@ namespace Microsoft.Scripting.JavaScript.SafeHandles
 
         protected override bool ReleaseHandle()
         {
-            if (IsInvalid || engine_.IsNil)
+            if (IsInvalid || engine_ == null)
                 return false;
 
             JavaScriptEngine eng;

@@ -20,19 +20,19 @@ namespace Microsoft.Scripting.JavaScript
         private class NativeFunctionThunkData
         {
             public JavaScriptCallableFunction callback;
-            public WeakReferenceStruct<JavaScriptEngine> engine;
+            public WeakReference<JavaScriptEngine> engine;
         }
 
         private class ExternalObjectThunkData
         {
-            public WeakReferenceStruct<JavaScriptEngine> engine;
-            public WeakReferenceStruct<object> userData;
+            public WeakReference<JavaScriptEngine> engine;
+            public WeakReference<object> userData;
             public object userDataStrong;
             public JavaScriptExternalObjectFinalizeCallback callback;
         }
 
         private JavaScriptEngineSafeHandle handle_;
-        private WeakReferenceStruct<JavaScriptRuntime> runtime_;
+        private WeakReference<JavaScriptRuntime> runtime_;
         private JavaScriptConverter converter_;
         private List<NativeFunctionThunkData> nativeFunctionThunks_;
         private static NativeFunctionThunkCallback NativeCallback;
@@ -132,8 +132,8 @@ namespace Microsoft.Scripting.JavaScript
             Debug.Assert(handle != null);
             Debug.Assert(runtime != null);
             Debug.Assert(api != null);
-            engineWeakReference = new WeakReferenceStruct<JavaScriptEngine>(this);
-            runtime_ = new WeakReferenceStruct<JavaScriptRuntime>(runtime);
+            engineWeakReference = new WeakReference<JavaScriptEngine>(this);
+            runtime_ = new WeakReference<JavaScriptRuntime>(runtime);
 
             api_ = api;
 
@@ -552,7 +552,7 @@ namespace Microsoft.Scripting.JavaScript
         private Dictionary<object, JavaScriptObject> externalObjectsDict = new Dictionary<object, JavaScriptObject>();
 
         internal List<GCHandle> strongGCHandles = new List<GCHandle>();
-        internal WeakReferenceStruct<JavaScriptEngine> engineWeakReference;
+        internal WeakReference<JavaScriptEngine> engineWeakReference;
 
         public JavaScriptObject CreateExternalObject(object externalData, JavaScriptExternalObjectFinalizeCallback finalizeCallback)
         {
@@ -708,6 +708,42 @@ namespace Microsoft.Scripting.JavaScript
                 return IntPtr.Zero;
             }
         }
+
+        public JavaScriptFunction CreateFunctionSimple(Func<object[], object> func)
+        {
+            return CreateFunction((en, ctor, dis, args) =>
+            {
+                var arr = BorrowArrayOfObjects(args.Length);
+                for (int i = 0; i < args.Length; i++)
+                {
+                    arr[i] = Converter.ToObject(args[i]);
+                }
+                var result = func(arr);
+                ReleaseArrayOfObjects(arr);
+                return Converter.FromObject(result);
+            });
+        }
+
+
+
+        public JavaScriptFunction CreateFunctionSimple(Func<object> func)
+        {
+            return CreateFunction((en, ctor, dis, args) =>
+            {
+                var result = func();
+                return Converter.FromObject(result);
+            });
+        }
+
+        public JavaScriptFunction CreateFunctionSimple(Func<object, object> func)
+        {
+            return CreateFunction((en, ctor, dis, args) =>
+            {
+                var result = func(Converter.ToObject(args.ElementAtOrDefault(0)));
+                return Converter.FromObject(result);
+            });
+        }
+
 
         public JavaScriptFunction CreateFunction(JavaScriptCallableFunction hostFunction)
         {
@@ -885,8 +921,6 @@ namespace Microsoft.Scripting.JavaScript
                     handle_ = null;
                 }
             }
-            engineWeakReference.Dispose();
-            runtime_.Dispose();
             var strong = strongGCHandles;
             if (strong != null)
             {

@@ -23,7 +23,7 @@ namespace Microsoft.Scripting.JavaScript
             public bool HasInstanceEvents;
         }
 
-        private WeakReferenceStruct<JavaScriptEngine> engine_;
+        private WeakReference<JavaScriptEngine> engine_;
         private ChakraApi api_;
         private Dictionary<Type, JavaScriptProjection> projectionTypes_;
         private Dictionary<Type, Expression> eventMarshallers_;
@@ -220,6 +220,11 @@ namespace Microsoft.Scripting.JavaScript
             if (o == null)
             {
                 return eng.NullValue;
+            }
+
+            if (o is Exception ex)
+            {
+                return FromString(ex.Message);
             }
 
             var jsVal = o as JavaScriptValue;
@@ -506,9 +511,16 @@ namespace Microsoft.Scripting.JavaScript
                         argsToPass[i] = val;
                     }
 
+                    var t = @this;
+                    object obj = null;
+                    while (obj == null && t.Prototype != null)
+                    {
+                        obj = t.ExternalObject;
+                        if(obj == null) t = t.Prototype;
+                    }
+
                     try
                     {
-                        var obj = @this.ExternalObject;
                         var result = FromObject(candidate.Invoke(obj, argsToPass));
                         engine.ReleaseArrayOfObjects(argsToPass);
                         return result;
@@ -536,8 +548,17 @@ namespace Microsoft.Scripting.JavaScript
                 return null;
 
             var external = @this.ExternalObject;
+            var t = @this;
+            while (external == null && t.Prototype != null)
+            {
+                external = t.ExternalObject;
+                t = t.Prototype;
+            }
             if (external == null)
+            {
+                var members = @this.GetOwnPropertyNamesAsStrings();
                 return null;
+            }
 
             MethodInfo most = null;
             int arity = -1;
