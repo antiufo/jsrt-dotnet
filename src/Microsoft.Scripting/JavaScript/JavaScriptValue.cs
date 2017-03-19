@@ -39,7 +39,7 @@ namespace Microsoft.Scripting.JavaScript
 
             handle_ = handle;
             type_ = type;
-            engine_ = new WeakReferenceStruct<JavaScriptEngine>(engine);
+            engine_ = engine.engineWeakReference;
         }
 
         public override string ToString()

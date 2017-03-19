@@ -132,16 +132,20 @@ namespace Microsoft.Scripting.JavaScript
             Debug.Assert(handle != null);
             Debug.Assert(runtime != null);
             Debug.Assert(api != null);
+            engineWeakReference = new WeakReferenceStruct<JavaScriptEngine>(this);
+            runtime_ = new WeakReferenceStruct<JavaScriptRuntime>(runtime);
+
             api_ = api;
 
             handle_ = handle;
-            runtime_ = new WeakReferenceStruct<JavaScriptRuntime>(runtime);
             converter_ = new JavaScriptConverter(this);
             nativeFunctionThunks_ = new List<NativeFunctionThunkData>();
             externalObjects_ = new HashSet<ExternalObjectThunkData>();
 
             handlesToRelease_ = new List<IntPtr>();
             handleReleaseLock_ = new object();
+
+            
 
             using (AcquireContext())
             {
@@ -547,6 +551,9 @@ namespace Microsoft.Scripting.JavaScript
 
         private ConditionalWeakTable<object, JavaScriptObject> externalObjectsDict = new ConditionalWeakTable<object, JavaScriptObject>();
 
+        internal List<GCHandle> strongGCHandles = new List<GCHandle>();
+        internal WeakReferenceStruct<JavaScriptEngine> engineWeakReference;
+
         public JavaScriptObject CreateExternalObject(object externalData, JavaScriptExternalObjectFinalizeCallback finalizeCallback)
         {
             if (externalObjectsDict.TryGetValue(externalData, out var obj))
@@ -554,8 +561,9 @@ namespace Microsoft.Scripting.JavaScript
                 return obj;
             }
 
-            ExternalObjectThunkData thunk = new ExternalObjectThunkData() { callback = finalizeCallback, engine = new WeakReferenceStruct<JavaScriptEngine>(this), userDataStrong = externalData/*, userData = new WeakReferenceStruct<object>(externalData),*/ };
+            ExternalObjectThunkData thunk = new ExternalObjectThunkData() { callback = finalizeCallback, engine = engineWeakReference, userDataStrong = externalData/*, userData = new WeakReferenceStruct<object>(externalData),*/ };
             GCHandle handle = GCHandle.Alloc(thunk);
+            strongGCHandles.Add(handle);
             externalObjects_.Add(thunk);
 
             JavaScriptValueSafeHandle result;
@@ -706,7 +714,7 @@ namespace Microsoft.Scripting.JavaScript
             if (hostFunction == null)
                 throw new ArgumentNullException(nameof(hostFunction));
 
-            NativeFunctionThunkData td = new NativeFunctionThunkData() { callback = hostFunction, engine = new WeakReferenceStruct<JavaScriptEngine>(this) };
+            NativeFunctionThunkData td = new NativeFunctionThunkData() { callback = hostFunction, engine = engineWeakReference };
             GCHandle handle = GCHandle.Alloc(td, GCHandleType.Weak);
             nativeFunctionThunks_.Add(td);
 
@@ -725,7 +733,7 @@ namespace Microsoft.Scripting.JavaScript
 
             var nameVal = Converter.FromString(name);
 
-            NativeFunctionThunkData td = new NativeFunctionThunkData() { callback = hostFunction, engine = new WeakReferenceStruct<JavaScriptEngine>(this) };
+            NativeFunctionThunkData td = new NativeFunctionThunkData() { callback = hostFunction, engine = engineWeakReference };
             GCHandle handle = GCHandle.Alloc(td, GCHandleType.Weak);
             nativeFunctionThunks_.Add(td);
 
@@ -875,6 +883,28 @@ namespace Microsoft.Scripting.JavaScript
                 {
                     handle_.Dispose();
                     handle_ = null;
+                }
+            }
+            engineWeakReference.Dispose();
+            runtime_.Dispose();
+            var strong = strongGCHandles;
+            if (strong != null)
+            {
+                strongGCHandles = null;
+                foreach (var item in strong)
+                {
+                    /*
+                    var target = item.Target;
+                    if (target != null)
+                    {
+                        var thunkData = target as ExternalObjectThunkData;
+                        if (thunkData != null)
+                        {
+                            Console.WriteLine(thunkData.userDataStrong?.GetType().FullName);
+                        }
+                    }
+                    */
+                    item.Free();
                 }
             }
         }

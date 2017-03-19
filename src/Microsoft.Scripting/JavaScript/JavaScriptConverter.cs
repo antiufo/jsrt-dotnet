@@ -30,7 +30,7 @@ namespace Microsoft.Scripting.JavaScript
 
         public JavaScriptConverter(JavaScriptEngine engine)
         {
-            engine_ = new WeakReferenceStruct<JavaScriptEngine>(engine);
+            engine_ = engine.engineWeakReference;
             api_ = engine.Api;
             projectionTypes_ = new Dictionary<Type, JavaScriptProjection>();
             eventMarshallers_ = new Dictionary<Type, Expression>();

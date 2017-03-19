@@ -28,7 +28,7 @@ namespace Microsoft.Scripting.JavaScript.SafeHandles
         {
             Debug.Assert(engine != null);
 
-            engine_ = new WeakReferenceStruct<JavaScriptEngine>(engine);
+            engine_ = engine.engineWeakReference;
         }
 
         public override bool IsInvalid

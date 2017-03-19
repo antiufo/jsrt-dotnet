@@ -8,7 +8,7 @@ using System.Runtime.InteropServices;
 
 namespace Microsoft.Scripting
 {
-    struct WeakReferenceStruct<T>
+    struct WeakReferenceStruct<T> : IDisposable
     {
         private GCHandle handle;
 
@@ -19,10 +19,18 @@ namespace Microsoft.Scripting
 
         public bool IsNil => handle == default(GCHandle);
 
+        public void Dispose()
+        {
+            if(!IsNil)
+                handle.Free();
+            handle = default(GCHandle);
+        }
+
         internal bool TryGetTarget(out T target)
         {
             target = (T)handle.Target;
             return target != null;
         }
+
     }
 }
