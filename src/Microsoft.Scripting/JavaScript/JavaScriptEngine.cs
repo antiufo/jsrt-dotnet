@@ -21,6 +21,7 @@ namespace Microsoft.Scripting.JavaScript
         {
             public JavaScriptCallableFunction callback;
             public WeakReference<JavaScriptEngine> engine;
+            public long order;
         }
 
         private class ExternalObjectThunkData
@@ -29,6 +30,7 @@ namespace Microsoft.Scripting.JavaScript
             public WeakReference<object> userData;
             public object userDataStrong;
             public JavaScriptExternalObjectFinalizeCallback callback;
+            public long order;
         }
 
         private JavaScriptEngineSafeHandle handle_;
@@ -103,6 +105,32 @@ namespace Microsoft.Scripting.JavaScript
             z.RemoveAt(z.Count - 1);
             return last;
 
+
+        }
+
+        public long LastExternalObjectId => lastExternalObjectId;
+
+        public void ClearExternalObjectReferences(Func<long, object, bool> condition)
+        {
+            var newhandles = new List<GCHandle>();
+            foreach (var handle in strongGCHandles)
+            {
+                var thunk = (ExternalObjectThunkData)handle.Target;
+                if (thunk == null) continue;
+                if (condition(thunk.order, thunk.userDataStrong))
+                {
+                    handle.Free();
+                    externalObjects_.Remove(thunk);
+                    externalObjectsDict.Remove(thunk.userDataStrong);
+                }
+                else
+                {
+                    newhandles.Add(handle);
+                }
+            }
+            strongGCHandles = newhandles;
+
+            nativeFunctionThunks_ = nativeFunctionThunks_.Where(x => !condition(x.order, x.callback)).ToList();
 
         }
 
@@ -226,6 +254,11 @@ namespace Microsoft.Scripting.JavaScript
 
             Errors.ThrowIfIs(api_.JsSetCurrentContext(handle_));
 
+            ReleaseHandles();
+        }
+
+        public void ReleaseHandles()
+        {
             if (handlesToRelease_.Count > 0)
             {
                 lock (handleReleaseLock_)
@@ -236,8 +269,9 @@ namespace Microsoft.Scripting.JavaScript
                         var error = api_.JsRelease(handle, out count);
                         Debug.Assert(error == JsErrorCode.JsNoError);
                     }
-                    
-                    handlesToRelease_.Clear();
+
+                    handlesToRelease_ = new List<IntPtr>();
+                    //handlesToRelease_.Clear();
                 }
             }
         }
@@ -554,6 +588,8 @@ namespace Microsoft.Scripting.JavaScript
         internal List<GCHandle> strongGCHandles = new List<GCHandle>();
         internal WeakReference<JavaScriptEngine> engineWeakReference;
 
+        private long lastExternalObjectId;
+
         public JavaScriptObject CreateExternalObject(object externalData, JavaScriptExternalObjectFinalizeCallback finalizeCallback)
         {
             if (externalObjectsDict.TryGetValue(externalData, out var obj))
@@ -561,7 +597,7 @@ namespace Microsoft.Scripting.JavaScript
                 return obj;
             }
 
-            ExternalObjectThunkData thunk = new ExternalObjectThunkData() { callback = finalizeCallback, engine = engineWeakReference, userDataStrong = externalData/*, userData = new WeakReferenceStruct<object>(externalData),*/ };
+            ExternalObjectThunkData thunk = new ExternalObjectThunkData() { callback = finalizeCallback, engine = engineWeakReference, userDataStrong = externalData, order = ++lastExternalObjectId /*, userData = new WeakReferenceStruct<object>(externalData),*/ };
             GCHandle handle = GCHandle.Alloc(thunk);
             strongGCHandles.Add(handle);
             externalObjects_.Add(thunk);
@@ -591,6 +627,28 @@ namespace Microsoft.Scripting.JavaScript
             thunk.userData.TryGetTarget(out result);
             return result;
         }
+
+
+        internal void SetExternalObjectFrom(JavaScriptValue value, object val)
+        {
+            Debug.Assert(value != null);
+            var example = (JavaScriptObject)Converter.FromObject(val);
+            var r = api_.JsSetExternalData(value.handle_, example.handle_.DangerousGetHandle());
+            if (r == JsErrorCode.JsErrorInvalidArgument) return;
+            Errors.ThrowIfIs(r);
+            /*
+            GCHandle gcHandle = GCHandle.FromIntPtr(handlePtr);
+            ExternalObjectThunkData thunk = gcHandle.Target as ExternalObjectThunkData;
+            if (thunk == null)
+                return null;
+            if (thunk.userDataStrong != null)
+                return thunk.userDataStrong;
+            object result;
+            thunk.userData.TryGetTarget(out result);
+            return result;
+            */
+        }
+
 
         public JavaScriptSymbol CreateSymbol(string description)
         {
@@ -750,7 +808,7 @@ namespace Microsoft.Scripting.JavaScript
             if (hostFunction == null)
                 throw new ArgumentNullException(nameof(hostFunction));
 
-            NativeFunctionThunkData td = new NativeFunctionThunkData() { callback = hostFunction, engine = engineWeakReference };
+            NativeFunctionThunkData td = new NativeFunctionThunkData() { order = ++lastExternalObjectId, callback = hostFunction, engine = engineWeakReference };
             GCHandle handle = GCHandle.Alloc(td, GCHandleType.Weak);
             nativeFunctionThunks_.Add(td);
 
@@ -769,7 +827,7 @@ namespace Microsoft.Scripting.JavaScript
 
             var nameVal = Converter.FromString(name);
 
-            NativeFunctionThunkData td = new NativeFunctionThunkData() { callback = hostFunction, engine = engineWeakReference };
+            NativeFunctionThunkData td = new NativeFunctionThunkData() { order = ++lastExternalObjectId, callback = hostFunction, engine = engineWeakReference };
             GCHandle handle = GCHandle.Alloc(td, GCHandleType.Weak);
             nativeFunctionThunks_.Add(td);
 
@@ -927,20 +985,11 @@ namespace Microsoft.Scripting.JavaScript
                 strongGCHandles = null;
                 foreach (var item in strong)
                 {
-                    /*
-                    var target = item.Target;
-                    if (target != null)
-                    {
-                        var thunkData = target as ExternalObjectThunkData;
-                        if (thunkData != null)
-                        {
-                            Console.WriteLine(thunkData.userDataStrong?.GetType().FullName);
-                        }
-                    }
-                    */
                     item.Free();
                 }
             }
+            externalObjectsDict = null;
+            externalObjects_ = null;
         }
 
         ~JavaScriptEngine()
