@@ -644,7 +644,12 @@ namespace Microsoft.Scripting.JavaScript
                             {
                                 val = (int)(double)val;
                             }
-                            prop.SetValue(@this.ExternalObject, val);
+                            var obj = @this.ExternalObject;
+                            if (obj == null && @this.Prototype.ExternalObject == engine.GlobalObject.Prototype.ExternalObject)
+                            {
+                                obj = @this.Prototype.ExternalObject;
+                            }
+                            prop.SetValue(obj, val);
                             return eng.UndefinedValue;
                         }
                         catch (Exception ex)
@@ -795,13 +800,7 @@ namespace Microsoft.Scripting.JavaScript
             projectionTypes_[t] = projection;
 
             var eng = GetEngineAndClaimContext();
-            var result = eng.CreateExternalObject(target, externalData =>
-            {
-                if (Interlocked.Decrement(ref projection.RefCount) <= 0)
-                {
-                    projectionTypes_.Remove(t);
-                }
-            });
+            var result = eng.CreateExternalObject(target, null);
             result.Prototype = projection.Prototype;
 
             return result;
