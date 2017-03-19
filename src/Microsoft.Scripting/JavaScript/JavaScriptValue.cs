@@ -14,7 +14,7 @@ namespace Microsoft.Scripting.JavaScript
     {
         internal JavaScriptValueSafeHandle handle_;
         internal JavaScriptValueType type_;
-        internal WeakReference<JavaScriptEngine> engine_;
+        internal WeakReferenceStruct<JavaScriptEngine> engine_;
         internal ChakraApi api_;
 
         internal JavaScriptEngine GetEngine()
@@ -39,7 +39,7 @@ namespace Microsoft.Scripting.JavaScript
 
             handle_ = handle;
             type_ = type;
-            engine_ = new WeakReference<JavaScriptEngine>(engine);
+            engine_ = new WeakReferenceStruct<JavaScriptEngine>(engine);
         }
 
         public override string ToString()

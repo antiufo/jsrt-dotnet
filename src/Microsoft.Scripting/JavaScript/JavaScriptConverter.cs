@@ -23,14 +23,14 @@ namespace Microsoft.Scripting.JavaScript
             public bool HasInstanceEvents;
         }
 
-        private WeakReference<JavaScriptEngine> engine_;
+        private WeakReferenceStruct<JavaScriptEngine> engine_;
         private ChakraApi api_;
         private Dictionary<Type, JavaScriptProjection> projectionTypes_;
         private Dictionary<Type, Expression> eventMarshallers_;
 
         public JavaScriptConverter(JavaScriptEngine engine)
         {
-            engine_ = new WeakReference<JavaScriptEngine>(engine);
+            engine_ = new WeakReferenceStruct<JavaScriptEngine>(engine);
             api_ = engine.Api;
             projectionTypes_ = new Dictionary<Type, JavaScriptProjection>();
             eventMarshallers_ = new Dictionary<Type, Expression>();

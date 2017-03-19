@@ -20,19 +20,19 @@ namespace Microsoft.Scripting.JavaScript
         private class NativeFunctionThunkData
         {
             public JavaScriptCallableFunction callback;
-            public WeakReference<JavaScriptEngine> engine;
+            public WeakReferenceStruct<JavaScriptEngine> engine;
         }
 
         private class ExternalObjectThunkData
         {
-            public WeakReference<JavaScriptEngine> engine;
-            public WeakReference<object> userData;
+            public WeakReferenceStruct<JavaScriptEngine> engine;
+            public WeakReferenceStruct<object> userData;
             public object userDataStrong;
             public JavaScriptExternalObjectFinalizeCallback callback;
         }
 
         private JavaScriptEngineSafeHandle handle_;
-        private WeakReference<JavaScriptRuntime> runtime_;
+        private WeakReferenceStruct<JavaScriptRuntime> runtime_;
         private JavaScriptConverter converter_;
         private List<NativeFunctionThunkData> nativeFunctionThunks_;
         private static NativeFunctionThunkCallback NativeCallback;
@@ -135,7 +135,7 @@ namespace Microsoft.Scripting.JavaScript
             api_ = api;
 
             handle_ = handle;
-            runtime_ = new WeakReference<JavaScriptRuntime>(runtime);
+            runtime_ = new WeakReferenceStruct<JavaScriptRuntime>(runtime);
             converter_ = new JavaScriptConverter(this);
             nativeFunctionThunks_ = new List<NativeFunctionThunkData>();
             externalObjects_ = new HashSet<ExternalObjectThunkData>();
@@ -554,7 +554,7 @@ namespace Microsoft.Scripting.JavaScript
                 return obj;
             }
 
-            ExternalObjectThunkData thunk = new ExternalObjectThunkData() { callback = finalizeCallback, engine = new WeakReference<JavaScriptEngine>(this), userDataStrong = externalData/*, userData = new WeakReference<object>(externalData),*/ };
+            ExternalObjectThunkData thunk = new ExternalObjectThunkData() { callback = finalizeCallback, engine = new WeakReferenceStruct<JavaScriptEngine>(this), userDataStrong = externalData/*, userData = new WeakReferenceStruct<object>(externalData),*/ };
             GCHandle handle = GCHandle.Alloc(thunk);
             externalObjects_.Add(thunk);
 
@@ -706,7 +706,7 @@ namespace Microsoft.Scripting.JavaScript
             if (hostFunction == null)
                 throw new ArgumentNullException(nameof(hostFunction));
 
-            NativeFunctionThunkData td = new NativeFunctionThunkData() { callback = hostFunction, engine = new WeakReference<JavaScriptEngine>(this) };
+            NativeFunctionThunkData td = new NativeFunctionThunkData() { callback = hostFunction, engine = new WeakReferenceStruct<JavaScriptEngine>(this) };
             GCHandle handle = GCHandle.Alloc(td, GCHandleType.Weak);
             nativeFunctionThunks_.Add(td);
 
@@ -725,7 +725,7 @@ namespace Microsoft.Scripting.JavaScript
 
             var nameVal = Converter.FromString(name);
 
-            NativeFunctionThunkData td = new NativeFunctionThunkData() { callback = hostFunction, engine = new WeakReference<JavaScriptEngine>(this) };
+            NativeFunctionThunkData td = new NativeFunctionThunkData() { callback = hostFunction, engine = new WeakReferenceStruct<JavaScriptEngine>(this) };
             GCHandle handle = GCHandle.Alloc(td, GCHandleType.Weak);
             nativeFunctionThunks_.Add(td);
 
