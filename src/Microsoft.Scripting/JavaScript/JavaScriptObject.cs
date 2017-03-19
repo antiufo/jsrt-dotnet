@@ -25,7 +25,7 @@ namespace Microsoft.Scripting.JavaScript
             {
                 var eng = GetEngine();
                 var fn = GetObjectBuiltinFunction("keys", "Object.keys");
-                return fn.Invoke(new JavaScriptValue[] { eng.UndefinedValue, this }) as JavaScriptArray;
+                return fn.Invoke(eng.UndefinedValue, this) as JavaScriptArray;
             }
         }
 
@@ -83,7 +83,7 @@ namespace Microsoft.Scripting.JavaScript
                 var eng = GetEngine();
                 var fn = GetObjectBuiltinFunction("isSealed", "Object.isSealed");
 
-                return eng.Converter.ToBoolean(fn.Invoke(new JavaScriptValue[] { eng.UndefinedValue, this }));
+                return eng.Converter.ToBoolean(fn.Invoke(eng.UndefinedValue, this));
             }
         }
 
@@ -95,7 +95,7 @@ namespace Microsoft.Scripting.JavaScript
                 var eng = GetEngine();
                 var fn = GetObjectBuiltinFunction("isFrozen", "Object.isFrozen");
 
-                return eng.Converter.ToBoolean(fn.Invoke(new JavaScriptValue[] { eng.UndefinedValue, this }));
+                return eng.Converter.ToBoolean(fn.Invoke(eng.UndefinedValue, this));
             }
         }
 
@@ -129,9 +129,7 @@ namespace Microsoft.Scripting.JavaScript
             var eng = GetEngine();
             var fn = GetBuiltinFunctionProperty("isPrototypeOf", "Object.prototype.isPrototypeOf");
 
-            var args = new List<JavaScriptValue>() { this, other };
-
-            return eng.Converter.ToBoolean(fn.Invoke(args));
+            return eng.Converter.ToBoolean(fn.Invoke(this, other));
         }
 
         public bool PropertyIsEnumerable(string propertyName)
@@ -140,8 +138,7 @@ namespace Microsoft.Scripting.JavaScript
             var fn = GetBuiltinFunctionProperty("propertyIsEnumerable", "Object.prototype.propertyIsEnumerable");
             using (var jsPropName = eng.Converter.FromString(propertyName))
             {
-                var args = new List<JavaScriptValue>() { this, jsPropName };
-                return eng.Converter.ToBoolean(fn.Invoke(args));
+                return eng.Converter.ToBoolean(fn.Invoke(this, jsPropName));
             }
         }
 
@@ -286,7 +283,7 @@ namespace Microsoft.Scripting.JavaScript
             var eng = GetEngine();
             var fn = GetBuiltinFunctionProperty("hasOwnProperty", "Object.prototype.hasOwnProperty");
 
-            return eng.Converter.ToBoolean(fn.Invoke(new JavaScriptValue[] { this, eng.Converter.FromString(propertyName) }));
+            return eng.Converter.ToBoolean(fn.Invoke(this, eng.Converter.FromString(propertyName)));
         }
 
         public bool HasProperty(string propertyName)
@@ -329,7 +326,7 @@ namespace Microsoft.Scripting.JavaScript
             var eng = GetEngine();
             var fnDP = GetObjectBuiltinFunction("defineProperties", "Object.defineProperties");
 
-            fnDP.Invoke(new JavaScriptValue[] { eng.UndefinedValue, this, propertiesContainer });
+            fnDP.Invoke(eng.UndefinedValue, this, propertiesContainer);
         }
 
         public JavaScriptArray GetOwnPropertyNames()
@@ -362,7 +359,7 @@ namespace Microsoft.Scripting.JavaScript
             var eng = GetEngine();
             var fn = GetObjectBuiltinFunction("seal", "Object.seal");
 
-            fn.Invoke(new JavaScriptValue[] { eng.UndefinedValue, this });
+            fn.Invoke(eng.UndefinedValue, this);
         }
 
         public void Freeze()
@@ -370,7 +367,7 @@ namespace Microsoft.Scripting.JavaScript
             var eng = GetEngine();
             var fn = GetObjectBuiltinFunction("freeze", "Object.freeze");
 
-            fn.Invoke(new JavaScriptValue[] { eng.UndefinedValue, this });
+            fn.Invoke(eng.UndefinedValue, this);
         }
 
         #region DynamicObject overrides
@@ -382,7 +379,13 @@ namespace Microsoft.Scripting.JavaScript
 
             if (fn != null)
             {
-                result = fn.Invoke(args.Select(a => c.FromObject(a)));
+                var arr = eng.BorrowArrayOfJavaScriptValue(args.Length);
+                for (int i = 0; i < args.Length; i++)
+                {
+                    arr[i] = c.FromObject(args[i]);
+                }
+                result = fn.Invoke(arr);
+                eng.ReleaseArrayOfJavaScriptValue(arr);
                 return true;
             }
             return base.TryInvokeMember(binder, args, out result);

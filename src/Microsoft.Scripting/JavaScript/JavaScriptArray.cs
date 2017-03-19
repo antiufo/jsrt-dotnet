@@ -72,133 +72,131 @@ namespace Microsoft.Scripting.JavaScript
         public JavaScriptValue Pop()
         {
             var fn = GetArrayBuiltin("pop");
-            return fn.Invoke(new JavaScriptValue[] { this });
+            return fn.Invoke(this);
         }
         public void Push(JavaScriptValue value)
         {
             var fn = GetArrayBuiltin("pop");
-            fn.Invoke(new JavaScriptValue[] { this, value });
+            fn.Invoke(this, value);
         }
         public void Reverse()
         {
             var fn = GetArrayBuiltin("reverse");
-            fn.Invoke(new JavaScriptValue[] { this });
+            fn.Invoke(this);
         }
 
         public JavaScriptValue Shift()
         {
             var fn = GetArrayBuiltin("shift");
-            return fn.Invoke(new JavaScriptValue[] { this });
+            return fn.Invoke(this);
         }
-        public int Unshift(IEnumerable<JavaScriptValue> valuesToInsert)
+        public int Unshift(IReadOnlyList<JavaScriptValue> valuesToInsert)
         {
             var eng = GetEngine();
             var fn = GetArrayBuiltin("unshift");
-            return eng.Converter.ToInt32(fn.Invoke(valuesToInsert.PrependWith(this)));
+            var arr = eng.BorrowArrayOfJavaScriptValue(valuesToInsert.Count + 1);
+            arr[0] = this;
+            var i = 1;
+            foreach (var item in valuesToInsert)
+            {
+                arr[i++] = item;
+            }
+            var result = eng.Converter.ToInt32(fn.Invoke(arr));
+            eng.ReleaseArrayOfJavaScriptValue(arr);
+            return result;
         }
         public void Sort(JavaScriptFunction compareFunction = null)
         {
             var fn = GetArrayBuiltin("sort");
-            List<JavaScriptValue> args = new List<JavaScriptValue>();
-            args.Add(this);
-            if (compareFunction != null)
-                args.Add(compareFunction);
-
-            fn.Invoke(args);
+            if (compareFunction != null) fn.Invoke(this, compareFunction);
+            else fn.Invoke(this);
         }
-        public JavaScriptArray Splice(uint index, uint numberToRemove, IEnumerable<JavaScriptValue> valuesToInsert)
+        public JavaScriptArray Splice(uint index, uint numberToRemove, IReadOnlyList<JavaScriptValue> valuesToInsert)
         {
             if (valuesToInsert == null)
-                valuesToInsert = Enumerable.Empty<JavaScriptValue>();
+                valuesToInsert = Array.Empty<JavaScriptValue>();
 
             var eng = GetEngine();
-            var args = valuesToInsert.PrependWith(this, eng.Converter.FromDouble(index), eng.Converter.FromDouble(numberToRemove));
+
+            var engine = GetEngine();
+            var args = engine.BorrowArrayOfJavaScriptValue(3 + valuesToInsert.Count);
+            args[0] = this;
+            args[1] = eng.Converter.FromDouble(index);
+            args[2] = eng.Converter.FromDouble(numberToRemove);
+            for (int i = 0; i < valuesToInsert.Count; i++)
+            {
+                args[3 + i] = valuesToInsert[i];
+            }
 
             var fn = GetArrayBuiltin("splice");
-            return fn.Invoke(args) as JavaScriptArray;
+            var r = fn.Invoke(args) as JavaScriptArray;
+            engine.ReleaseArrayOfJavaScriptValue(args);
+            return r;
         }
-        public JavaScriptArray Concat(IEnumerable<JavaScriptValue> itemsToConcatenate)
+        public JavaScriptArray Concat(JavaScriptArray itemsToConcatenate)
         {
-            JavaScriptArray otherIsArray = itemsToConcatenate as JavaScriptArray;
-            List<JavaScriptValue> args = new List<JavaScriptValue>();
-            args.Add(this);
-            if (otherIsArray != null)
-            {
-                args.Add(otherIsArray);
-            }
-            else
-            {
-                foreach (var item in itemsToConcatenate)
-                    args.Add(item);
-            }
+            var fn = GetArrayBuiltin("concat");
+            return fn.Invoke(this, itemsToConcatenate) as JavaScriptArray;
+        }
+        public JavaScriptArray Concat(IReadOnlyList<JavaScriptValue> itemsToConcatenate)
+        {
+            JavaScriptValue[] args;
+            var engine = GetEngine();
+         
+            args = engine.BorrowArrayOfJavaScriptValue(itemsToConcatenate.Count + 1);
+            var i = 1;
+            foreach (var item in itemsToConcatenate)
+                args[i++] = item;
+            
+            args[0] = this;
 
             var fn = GetArrayBuiltin("concat");
-            return fn.Invoke(args) as JavaScriptArray;
+            var result = fn.Invoke(args) as JavaScriptArray;
+            engine.ReleaseArrayOfJavaScriptValue(args);
+            return result;
         }
         public string Join(string separator = "")
         {
             var eng = GetEngine();
-            List<JavaScriptValue> args = new List<JavaScriptValue>();
-            args.Add(this);
-            if (!string.IsNullOrEmpty(separator))
-                args.Add(eng.Converter.FromString(separator));
-
+            
             var fn = GetArrayBuiltin("join");
-            return eng.Converter.ToString(fn.Invoke(args));
+
+            if (!string.IsNullOrEmpty(separator))
+                eng.Converter.ToString(fn.Invoke(this, eng.Converter.FromString(separator)));
+            
+            return eng.Converter.ToString(fn.Invoke(this));
         }
         public JavaScriptArray Slice(int beginning)
         {
-            var args = new List<JavaScriptValue>();
-            args.Add(this);
-            args.Add(GetEngine().Converter.FromInt32(beginning));
-
-            return GetArrayBuiltin("slice").Invoke(args) as JavaScriptArray;
+            return GetArrayBuiltin("slice").Invoke(this, GetEngine().Converter.FromInt32(beginning)) as JavaScriptArray;
         }
         public JavaScriptArray Slice(int beginning, int end)
         {
-            var args = new List<JavaScriptValue>();
-            args.Add(this);
-            args.Add(GetEngine().Converter.FromInt32(beginning));
-            args.Add(GetEngine().Converter.FromInt32(end));
-
-            return GetArrayBuiltin("slice").Invoke(args) as JavaScriptArray;
+            return GetArrayBuiltin("slice").Invoke(this, GetEngine().Converter.FromInt32(beginning), GetEngine().Converter.FromInt32(end)) as JavaScriptArray;
         }
         public int IndexOf(JavaScriptValue valueToFind)
         {
-            var args = new List<JavaScriptValue>();
-            args.Add(this);
-            args.Add(valueToFind);
-
-            return GetEngine().Converter.ToInt32(GetArrayBuiltin("indexOf").Invoke(args));
+            return GetEngine().Converter.ToInt32(GetArrayBuiltin("indexOf").Invoke(this, valueToFind));
         }
         public int IndexOf(JavaScriptValue valueToFind, int startIndex)
         {
             var eng = GetEngine();
-            var args = new List<JavaScriptValue>();
-            args.Add(this);
-            args.Add(valueToFind);
-            args.Add(eng.Converter.FromInt32(startIndex));
+            
 
-            return eng.Converter.ToInt32(GetArrayBuiltin("indexOf").Invoke(args));
+            return eng.Converter.ToInt32(GetArrayBuiltin("indexOf").Invoke(this, valueToFind, eng.Converter.FromInt32(startIndex)));
         }
         public int LastIndexOf(JavaScriptValue valueToFind)
         {
             var eng = GetEngine();
-            var args = new List<JavaScriptValue>();
-            args.Add(this);
-            args.Add(valueToFind);
 
-            return eng.Converter.ToInt32(GetArrayBuiltin("lastIndexOf").Invoke(args));
+            return eng.Converter.ToInt32(GetArrayBuiltin("lastIndexOf").Invoke(this, valueToFind));
         }
         public int LastIndexOf(JavaScriptValue valueToFind, int lastIndex)
         {
             var eng = GetEngine();
-            var args = new List<JavaScriptValue>();
-            args.Add(this);
-            args.Add(valueToFind);
-            args.Add(eng.Converter.FromInt32(lastIndex));
 
-            return eng.Converter.ToInt32(GetArrayBuiltin("lastIndexOf").Invoke(args));
+
+            return eng.Converter.ToInt32(GetArrayBuiltin("lastIndexOf").Invoke(this, valueToFind, eng.Converter.FromInt32(lastIndex)));
         }
 
         public void ForEach(JavaScriptFunction callee)
@@ -206,101 +204,64 @@ namespace Microsoft.Scripting.JavaScript
             if (callee == null)
                 throw new ArgumentNullException(nameof(callee));
 
-            var args = new List<JavaScriptValue>();
-            args.Add(this);
-            args.Add(callee);
-
-            GetArrayBuiltin("forEach").Invoke(args);
+            GetArrayBuiltin("forEach").Invoke(this, callee);
         }
         public bool Every(JavaScriptFunction predicate)
         {
             if (predicate == null)
                 throw new ArgumentNullException(nameof(predicate));
-
-            var args = new List<JavaScriptValue>();
-            args.Add(this);
-            args.Add(predicate);
-
-            return GetEngine().Converter.ToBoolean(GetArrayBuiltin("every").Invoke(args));
+            
+            return GetEngine().Converter.ToBoolean(GetArrayBuiltin("every").Invoke(this, predicate));
         }
         public bool Some(JavaScriptFunction predicate)
         {
             if (predicate == null)
                 throw new ArgumentNullException(nameof(predicate));
 
-            var args = new List<JavaScriptValue>();
-            args.Add(this);
-            args.Add(predicate);
-
-            return GetEngine().Converter.ToBoolean(GetArrayBuiltin("some").Invoke(args));
+            return GetEngine().Converter.ToBoolean(GetArrayBuiltin("some").Invoke(this, predicate));
         }
         public JavaScriptArray Filter(JavaScriptFunction predicate)
         {
             if (predicate == null)
                 throw new ArgumentNullException(nameof(predicate));
-
-            var args = new List<JavaScriptValue>();
-            args.Add(this);
-            args.Add(predicate);
-
-            return GetArrayBuiltin("filter").Invoke(args) as JavaScriptArray;
+            return GetArrayBuiltin("filter").Invoke(this, predicate) as JavaScriptArray;
         }
         public JavaScriptArray Map(JavaScriptFunction converter)
         {
             if (converter == null)
                 throw new ArgumentNullException(nameof(converter));
 
-            var args = new List<JavaScriptValue>();
-            args.Add(this);
-            args.Add(converter);
 
-            return GetArrayBuiltin("map").Invoke(args) as JavaScriptArray;
+            return GetArrayBuiltin("map").Invoke(this, converter) as JavaScriptArray;
         }
         public JavaScriptValue Reduce(JavaScriptFunction aggregator)
         {
             if (aggregator == null)
                 throw new ArgumentNullException(nameof(aggregator));
 
-            var args = new List<JavaScriptValue>();
-            args.Add(this);
-            args.Add(aggregator);
-
-            return GetArrayBuiltin("reduce").Invoke(args);
+            return GetArrayBuiltin("reduce").Invoke(this, aggregator);
         }
         public JavaScriptValue Reduce(JavaScriptFunction aggregator, JavaScriptValue initialValue)
         {
             if (aggregator == null)
                 throw new ArgumentNullException(nameof(aggregator));
 
-            var args = new List<JavaScriptValue>();
-            args.Add(this);
-            args.Add(aggregator);
-            args.Add(initialValue);
 
-            return GetArrayBuiltin("reduce").Invoke(args);
+            return GetArrayBuiltin("reduce").Invoke(this, aggregator, initialValue);
         }
         public JavaScriptValue ReduceRight(JavaScriptFunction aggregator)
         {
             if (aggregator == null)
                 throw new ArgumentNullException(nameof(aggregator));
 
-            var args = new List<JavaScriptValue>();
-            args.Add(this);
-            args.Add(aggregator);
-
-            return GetArrayBuiltin("reduceRight").Invoke(args);
+            return GetArrayBuiltin("reduceRight").Invoke(this, aggregator);
         }
         public JavaScriptValue ReduceRight(JavaScriptFunction aggregator, JavaScriptValue initialValue)
         {
             if (aggregator == null)
                 throw new ArgumentNullException(nameof(aggregator));
 
-            var args = new List<JavaScriptValue>();
-            args.Add(this);
-            args.Add(aggregator);
-            args.Add(initialValue);
-
-            return GetArrayBuiltin("reduceRight").Invoke(args);
+            return GetArrayBuiltin("reduceRight").Invoke(this, aggregator, initialValue);
         }
 
         public IEnumerator<JavaScriptValue> GetEnumerator()

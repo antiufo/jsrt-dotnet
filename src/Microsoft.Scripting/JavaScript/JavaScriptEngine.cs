@@ -13,7 +13,7 @@ using System.Threading.Tasks;
 namespace Microsoft.Scripting.JavaScript
 {
     public delegate void JavaScriptExternalObjectFinalizeCallback(object additionalData);
-    public delegate JavaScriptValue JavaScriptCallableFunction(JavaScriptEngine callingEngine, bool asConstructor, JavaScriptValue thisValue, IEnumerable<JavaScriptValue> arguments);
+    public delegate JavaScriptValue JavaScriptCallableFunction(JavaScriptEngine callingEngine, bool asConstructor, JavaScriptValue thisValue, JavaScriptValue[] arguments);
 
     public sealed class JavaScriptEngine : IDisposable
     {
@@ -37,6 +37,75 @@ namespace Microsoft.Scripting.JavaScript
         private List<NativeFunctionThunkData> nativeFunctionThunks_;
         private static NativeFunctionThunkCallback NativeCallback;
         private static IntPtr NativeCallbackPtr;
+
+
+        private List<IntPtr[]>[] IntPtrArrayPool = new List<IntPtr[]>[10];
+        private List<object[]>[] ObjectArrayPool = new List<object[]>[10];
+        private List<JavaScriptValue[]>[] JavaScriptValueArrayPool = new List<JavaScriptValue[]>[10];
+
+        internal IntPtr[] BorrowArrayOfIntPtr(int length)
+        {
+            return BorrowArray(IntPtrArrayPool, length);
+        }
+        internal void ReleaseArrayOfIntPtr(IntPtr[] array)
+        {
+            ReleaseArray(IntPtrArrayPool, array, false);
+        }
+
+
+        internal object[] BorrowArrayOfObjects(int length)
+        {
+            return BorrowArray(ObjectArrayPool, length);
+        }
+        internal void ReleaseArrayOfObjects(object[] array)
+        {
+            ReleaseArray(ObjectArrayPool, array, true);
+        }
+
+
+
+        internal JavaScriptValue[] BorrowArrayOfJavaScriptValue(int length)
+        {
+            return BorrowArray(JavaScriptValueArrayPool, length);
+        }
+        internal void ReleaseArrayOfJavaScriptValue(JavaScriptValue[] array)
+        {
+            ReleaseArray(JavaScriptValueArrayPool, array, true);
+        }
+
+        private void ReleaseArray<T>(List<T[]>[] pool, T[] array, bool clear)
+        {
+            if (array.Length >= pool.Length || array.Length == 0) return;
+            var z = pool[array.Length];
+            if (z == null) return;
+            if (z.Count >= 10) return;
+            if (clear)
+            {
+                for (int i = 0; i < array.Length; i++)
+                {
+                    array[i] = default(T);
+                }
+            }
+            z.Add(array);
+        }
+
+        private T[] BorrowArray<T>(List<T[]>[] pool, int length)
+        {
+            if (length == 0) return Array.Empty<T>();
+            if (length >= pool.Length) return new T[length];
+            var z = pool[length];
+            if (z == null)
+            {
+                pool[length] = z = new List<T[]>();
+            }
+            if (z.Count == 0) return new T[length];
+            var last = z[z.Count - 1];
+            z.RemoveAt(z.Count - 1);
+            return last;
+
+
+        }
+
         private static JsFinalizeCallback FinalizerCallback;
         private static IntPtr FinalizerCallbackPtr;
         private HashSet<ExternalObjectThunkData> externalObjects_;
@@ -608,9 +677,15 @@ namespace Microsoft.Scripting.JavaScript
                     thisValue = engine.CreateValueFromHandle(new JavaScriptValueSafeHandle(args[0]));
                 }
 
+                var arr = engine.BorrowArrayOfJavaScriptValue(args.Length - 1);
+                for (int i = 1; i < args.Length; i++)
+                {
+                    arr[i - 1] = engine.CreateValueFromHandle(new JavaScriptValueSafeHandle(args[i]));
+                }
                 try
                 {
-                    var result = nativeThunk.callback(engine, asConstructor, thisValue, args.Skip(1).Select(h => engine.CreateValueFromHandle(new JavaScriptValueSafeHandle(h))));
+                    var result = nativeThunk.callback(engine, asConstructor, thisValue, arr);
+                    engine.ReleaseArrayOfJavaScriptValue(arr);
                     return result.handle_.DangerousGetHandle();
                 }
                 catch (Exception ex)

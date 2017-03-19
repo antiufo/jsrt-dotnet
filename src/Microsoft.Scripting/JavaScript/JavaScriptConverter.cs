@@ -453,11 +453,15 @@ namespace Microsoft.Scripting.JavaScript
             }
         }
 
+        private Dictionary<MethodInfo, ParameterInfo[]> parameterCache = new Dictionary<MethodInfo, ParameterInfo[]>();
+
         private void ProjectMethods(string owningTypeName, JavaScriptObject target, JavaScriptEngine engine, IEnumerable<MethodInfo> methods)
         {
             var methodsByName = methods.GroupBy(m => m.Name);
             foreach (var group in methodsByName)
             {
+                var groupKey = group.Key;
+                var groupCandidates = group.ToList();
                 var method = engine.CreateFunction((eng, ctor, thisObj, args) =>
                 {
                     var @this = thisObj as JavaScriptObject;
@@ -470,23 +474,28 @@ namespace Microsoft.Scripting.JavaScript
                         }
                         else
                         {
-                            eng.SetException(eng.CreateTypeError("Could not call method '" + group.Key + "' because there was an invalid 'this' context."));
+                            eng.SetException(eng.CreateTypeError("Could not call method '" + groupKey + "' because there was an invalid 'this' context."));
                             return eng.UndefinedValue;
                         }
                     }
 
                     var argsArray = args.ToArray();
-                    var candidate = GetBestFitMethod(group, thisObj, argsArray);
+                    var candidate = GetBestFitMethod(groupCandidates, thisObj, argsArray);
                     if (candidate == null)
                     {
-                        eng.SetException(eng.CreateReferenceError("Could not find suitable method or not enough arguments to invoke '" + group.Key + "'."));
+                        eng.SetException(eng.CreateReferenceError("Could not find suitable method or not enough arguments to invoke '" + groupKey + "'."));
                         return eng.UndefinedValue;
                     }
 
+                    if (!parameterCache.TryGetValue(candidate, out var parameters))
+                    {
+                        parameters = candidate.GetParameters();
+                        parameterCache[candidate] = parameters;
+                    }
 
-                    var parameters = candidate.GetParameters();
+
                     var parameterCount = parameters.Length;
-                    var argsToPass = new object[parameterCount];
+                    var argsToPass = engine.BorrowArrayOfObjects(parameterCount);
                     for (int i = 0; i < parameterCount && i < argsArray.Length; i++)
                     {
                         var val = ToObject(argsArray[i]);
@@ -500,25 +509,27 @@ namespace Microsoft.Scripting.JavaScript
                     try
                     {
                         var obj = @this.ExternalObject;
-                        return FromObject(candidate.Invoke(obj, argsToPass));
+                        var result = FromObject(candidate.Invoke(obj, argsToPass));
+                        engine.ReleaseArrayOfObjects(argsToPass);
+                        return result;
                     }
                     catch (Exception ex)
                     {
                         eng.SetException(FromObject(ex), ex);
                         return eng.UndefinedValue;
                     }
-                }, owningTypeName + "." + group.Key);
+                }, owningTypeName + "." + groupKey);
                 //var propDescriptor = engine.CreateObject();
                 //propDescriptor.SetPropertyByName("configurable", engine.TrueValue);
                 //propDescriptor.SetPropertyByName("enumerable", engine.TrueValue);
                 //propDescriptor.SetPropertyByName("value", method);
                 //target.DefineProperty(group.Key, propDescriptor);
-                target.SetPropertyByName(group.Key, method);
+                target.SetPropertyByName(groupKey, method);
             }
         }
 
         // todo: replace with a dynamic method thunk
-        private MethodInfo GetBestFitMethod(IEnumerable<MethodInfo> methodCandidates, JavaScriptValue thisObj, JavaScriptValue[] argsArray)
+        private MethodInfo GetBestFitMethod(List<MethodInfo> methodCandidates, JavaScriptValue thisObj, JavaScriptValue[] argsArray)
         {
             JavaScriptObject @this = thisObj as JavaScriptObject;
             if (@this == null)
@@ -531,7 +542,7 @@ namespace Microsoft.Scripting.JavaScript
             MethodInfo most = null;
             int arity = -1;
 
-            if (methodCandidates.Count() == 1) return methodCandidates.First();
+            if (methodCandidates.Count == 1) return methodCandidates[0];
 
             foreach (var candidate in methodCandidates)
             {
@@ -894,7 +905,7 @@ namespace Microsoft.Scripting.JavaScript
                         jsObj.SetPropertyByName(names[i], eng.Converter.FromObject(values[i]));
                     }
 
-                    registration.Item1.Invoke(new[] { jsObj });
+                    registration.Item1.Invoke(jsObj);
                 }
             }
             else
@@ -910,7 +921,7 @@ namespace Microsoft.Scripting.JavaScript
                             jsObj.SetPropertyByName(names[i], eng.Converter.FromObject(values[i]));
                         }
 
-                        registration.Item1.Invoke(new[] { jsObj });
+                        registration.Item1.Invoke(jsObj);
                     }
                 }, null);
             }

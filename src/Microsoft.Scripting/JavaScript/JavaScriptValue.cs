@@ -30,7 +30,7 @@ namespace Microsoft.Scripting.JavaScript
         {
             Debug.Assert(handle != null);
             Debug.Assert(engine != null);
-            Debug.Assert(Enum.IsDefined(typeof(JavaScriptValueType), type));
+            Debug.Assert(type >= 0 && type <= JavaScriptValueType.DataView);
             handle.SetEngine(engine);
             api_ = engine.Api;
 
