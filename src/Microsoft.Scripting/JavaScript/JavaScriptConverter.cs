@@ -544,13 +544,15 @@ namespace Microsoft.Scripting.JavaScript
         // todo: replace with a dynamic method thunk
         private MethodInfo GetBestFitMethod(List<MethodInfo> methodCandidates, JavaScriptValue thisObj, JavaScriptValue[] argsArray)
         {
+            if (methodCandidates.Count == 1) return methodCandidates[0];
+
             JavaScriptObject @this = thisObj as JavaScriptObject;
             if (@this == null)
                 return null;
 
             var external = @this.ExternalObject;
             var t = @this;
-            while (external == null && t.Prototype != null)
+            while (external == null && t.IsTruthy && t.Prototype != null)
             {
                 external = t.ExternalObject;
                 t = t.Prototype;
@@ -563,8 +565,6 @@ namespace Microsoft.Scripting.JavaScript
 
             MethodInfo most = null;
             int arity = -1;
-
-            if (methodCandidates.Count == 1) return methodCandidates[0];
 
             foreach (var candidate in methodCandidates)
             {
