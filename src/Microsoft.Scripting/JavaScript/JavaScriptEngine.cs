@@ -784,6 +784,7 @@ namespace Microsoft.Scripting.JavaScript
 
 
 
+
         public JavaScriptFunction CreateFunctionSimple(Func<object> func)
         {
             return CreateFunction((en, ctor, dis, args) =>
@@ -797,8 +798,17 @@ namespace Microsoft.Scripting.JavaScript
         {
             return CreateFunction((en, ctor, dis, args) =>
             {
-                var result = func(Converter.ToObject(args.ElementAtOrDefault(0)));
+                var result = func(args.Length >= 1 ? Converter.ToObject(args[0]) : null);
                 return Converter.FromObject(result);
+            });
+        }
+
+        public JavaScriptFunction CreateFunctionSimple(Action<object> func)
+        {
+            return CreateFunction((en, ctor, dis, args) =>
+            {
+                func(args.Length >= 1 ? Converter.ToObject(args[0]) : null);
+                return en.UndefinedValue;
             });
         }
 
@@ -875,8 +885,23 @@ namespace Microsoft.Scripting.JavaScript
             }
             Errors.ThrowIfIs(api_.JsSetException(exception.handle_));
             this.lastException = clrException;
+            if (PrintExceptionsToStdOut)
+            {
+                var innermost = clrException;
+                while (innermost.InnerException != null)
+                    innermost = innermost.InnerException;
+                if (lastPrintedException != innermost)
+                {
+                    lastPrintedException = innermost;
+                    Console.WriteLine("----------------------------------------------------------------------");
+                    Console.WriteLine(clrException);
+                }
+            }
         }
         #endregion
+
+        private Exception lastPrintedException;
+        public bool PrintExceptionsToStdOut { get; set; }
 
         #region Errors
         public JavaScriptObject CreateError(string message = "")
@@ -960,6 +985,12 @@ namespace Microsoft.Scripting.JavaScript
 
             var proj = Converter.GetProjectionPrototypeForType(t);
             SetGlobalVariable(name, proj.GetPropertyByName("constructor"));
+        }
+
+        public JavaScriptObject ProjectStaticType<T>()
+        {
+            var proj = Converter.GetProjectionPrototypeForType(typeof(T));
+            return (JavaScriptObject)proj.GetPropertyByName("constructor");
         }
 
         #region IDisposable implementation
