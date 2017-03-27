@@ -17,7 +17,7 @@ namespace Microsoft.Scripting.JavaScript
         internal WeakReference<JavaScriptEngine> engine_;
         internal ChakraApi api_;
 
-        internal JavaScriptEngine GetEngine()
+        public JavaScriptEngine GetEngine()
         {
             JavaScriptEngine result;
             if (!engine_.TryGetTarget(out result))
