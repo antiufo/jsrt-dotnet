@@ -505,16 +505,19 @@ namespace Microsoft.Scripting.JavaScript
                     for (int i = 0; i < parameterCount && i < argsArray.Length; i++)
                     {
                         var val = ToObject(argsArray[i]);
-                        if (val != null && parameters[i].ParameterType == typeof(string) && !(val is string))
+                        var parameterType = parameters[i].ParameterType;
+                        if (val != null && parameterType == typeof(string) && !(val is string))
                         {
                             val = argsArray[i].ToString();
                         }
+                        if (val is Double d && parameterType != typeof(Double))
+                            val = Convert.ChangeType(val, parameterType);
                         argsToPass[i] = val;
                     }
 
                     var t = @this;
                     object obj = null;
-                    while (obj == null && t.Prototype != null)
+                    while (obj == null && t.IsTruthy && t.Prototype != null)
                     {
                         obj = t.ExternalObject;
                         if(obj == null) t = t.Prototype;
