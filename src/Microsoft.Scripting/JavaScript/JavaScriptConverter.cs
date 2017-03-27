@@ -341,7 +341,7 @@ namespace Microsoft.Scripting.JavaScript
             }
         }
 
-        internal JavaScriptObject GetProjectionPrototypeForType(Type t)
+        public JavaScriptObject GetProjectionPrototypeForType(Type t)
         {
             JavaScriptProjection baseTypeProjection;
 
@@ -358,6 +358,7 @@ namespace Microsoft.Scripting.JavaScript
 
             return baseTypeProjection.Prototype;
         }
+
 
         private JavaScriptProjection InitializeProjectionForType(Type t)
         {
