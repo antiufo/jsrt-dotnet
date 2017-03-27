@@ -238,19 +238,19 @@ namespace Microsoft.Scripting.JavaScript
             }
             else if (t == typeof(double) || t == typeof(float))
             {
-                return FromDouble((double)o);
+                return FromDouble(Convert.ToDouble(o));
             }
             else if (t == typeof(int) || t == typeof(short) || t == typeof(ushort) || t == typeof(byte) || t == typeof(sbyte))
             {
-                return FromInt32((int)o);
+                return FromInt32(Convert.ToInt32(o));
             }
             else if (t == typeof(uint))
             {
-                return FromDouble((uint)o);
+                return FromDouble(Convert.ToUInt32(o));
             }
             else if (t == typeof(long))
             {
-                return FromDouble((long)o);
+                return FromDouble(Convert.ToInt64(o));
             }
             else if (t == typeof(bool))
             {
