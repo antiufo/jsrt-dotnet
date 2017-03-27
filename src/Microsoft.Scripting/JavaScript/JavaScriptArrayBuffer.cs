@@ -46,7 +46,7 @@ namespace Microsoft.Scripting.JavaScript
             return new UnmanagedMemoryStream((byte*)buffer.ToPointer(), len);
         }
 
-        internal unsafe Tuple<IntPtr, uint> GetUnderlyingMemoryInfo()
+        public unsafe Tuple<IntPtr, uint> GetUnderlyingMemoryInfo()
         {
             var eng = GetEngine();
             IntPtr buffer;
